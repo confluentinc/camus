@@ -50,7 +50,7 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], GenericData.Recor
   private ByteBuffer getByteBuffer(byte[] payload) {
     ByteBuffer buffer = ByteBuffer.wrap(payload);
     byte magic = buffer.get();
-    logger.info("MAGIC BYTE" + magic);
+    logger.debug("MAGIC BYTE" + magic);
     if (magic != MAGIC_BYTE) {
       throw new MessageDecoderException("Unknown magic byte!");
     }
@@ -62,9 +62,9 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], GenericData.Recor
       ByteBuffer buffer = getByteBuffer(payload);
       int id = buffer.getInt();
       Schema schema = schemaRegistry.getByID(id);
-      logger.info(schema.toString());
       if (schema == null)
         throw new IllegalStateException("Unknown schema id: " + id);
+      logger.debug(schema.toString());
       int length = buffer.limit() - 1 - idSize;
       if (schema.getType().equals(Schema.Type.BYTES)) {
         byte[] bytes = new byte[length];
@@ -88,7 +88,11 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], GenericData.Recor
 
   public CamusWrapper<Record> decode(byte[] payload) {
     Object object = deserialize(payload);
-    return new CamusAvroWrapper((Record) object);
+    if (object instanceof Record) {
+      return new CamusAvroWrapper((Record) object);
+    } else {
+      throw new MessageDecoderException("Camus does not support Avro primitive types!");
+    }
   }
 
   private static class CamusAvroWrapper extends CamusWrapper<Record> {
