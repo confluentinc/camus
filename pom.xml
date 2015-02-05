@@ -130,7 +130,19 @@
 				<artifactId>commons-httpclient</artifactId>
 				<version>3.0.1</version>
 			</dependency>
-		</dependencies>
+            <dependency>
+                <groupId>com.google.inject</groupId>
+                <artifactId>guice</artifactId>
+            </dependency>
+            <dependency>
+                <groupId>com.sun.jersey.contribs</groupId>
+                <artifactId>jersey-guice</artifactId>
+            </dependency>
+            <dependency>
+                <groupId>com.google.inject.extensions</groupId>
+                <artifactId>guice-servlet</artifactId>
+            </dependency>
+        </dependencies>
 	</dependencyManagement>
 
 	<modules>
