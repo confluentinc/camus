@@ -20,6 +20,7 @@ import java.util.Properties;
 
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
+import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 
 public class AvroMessageDecoder extends MessageDecoder<byte[], GenericData.Record> {
   private static final byte MAGIC_BYTE = 0x0;
@@ -80,8 +81,10 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], GenericData.Recor
         object = ((Utf8) object).toString();
       }
       return object;
-    } catch (IOException e) {
-      throw new MessageDecoderException("Error deserializing Avro message", e);
+    } catch (IOException ioe) {
+      throw new MessageDecoderException("Error deserializing Avro message", ioe);
+    } catch (RestClientException re) {
+      throw new MessageDecoderException("Error deserializing Avro message", re);
     }
   }
 
