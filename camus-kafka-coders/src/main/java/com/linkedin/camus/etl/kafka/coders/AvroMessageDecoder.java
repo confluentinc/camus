@@ -21,6 +21,8 @@ import java.util.Properties;
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
+import io.confluent.kafka.schemaregistry.client.rest.utils.RestUtils;
+
 
 public class AvroMessageDecoder extends MessageDecoder<byte[], GenericData.Record> {
   private static final byte MAGIC_BYTE = 0x0;
@@ -31,6 +33,11 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], GenericData.Recor
   private static final Logger logger = Logger.getLogger(AvroMessageDecoder.class);
   protected DecoderFactory decoderFactory;
   private SchemaRegistryClient schemaRegistry;
+  private String url;
+  private final Schema.Parser parser = new Schema.Parser();
+  private Schema latestSchema;
+  private int initLatestVersion;
+  private String topic;
 
   @Override
   public void init(Properties props, String topicName) {
@@ -39,13 +46,19 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], GenericData.Recor
     if (props == null) {
       throw new IllegalArgumentException("Missing schema registry url!");
     }
-    String url = props.getProperty(SCHEMA_REGISTRY_URL);
+    url = props.getProperty(SCHEMA_REGISTRY_URL);
     if (url == null) {
       throw new IllegalArgumentException("Missing schema registry url!");
     }
     String maxSchemaObject = props.getProperty(
         MAX_SCHEMAS_PER_SUBJECT, DEFAULT_MAX_SCHEMAS_PER_SUBJECT);
     schemaRegistry = new CachedSchemaRegistryClient(url, Integer.parseInt(maxSchemaObject));
+    String subject = topicName + "-value";
+    io.confluent.kafka.schemaregistry.client.rest.entities.Schema restSchema =
+        getLatestSchema(subject, url);
+    this.topic = topicName;
+    this.latestSchema = parser.parse(restSchema.getSchema());
+    this.initLatestVersion = restSchema.getVersion();
   }
 
   private ByteBuffer getByteBuffer(byte[] payload) {
@@ -58,6 +71,26 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], GenericData.Recor
     return buffer;
   }
 
+
+  private io.confluent.kafka.schemaregistry.client.rest.entities.Schema getLatestSchema(String subject, String url) {
+    try {
+     return RestUtils.getVersion(url, RestUtils.DEFAULT_REQUEST_PROPERTIES, subject, -1);
+    } catch (IOException e) {
+
+    } catch (RestClientException re) {
+
+    }
+    return null;
+  }
+
+  private String constructSubject(String topic, Schema schema, boolean isNew) {
+    if (isNew) {
+      return topic + "-value";
+    } else {
+      return schema.getName() + "-value";
+    }
+  }
+
   private Object deserialize(byte[] payload) throws MessageDecoderException {
     try {
       ByteBuffer buffer = getByteBuffer(payload);
@@ -66,6 +99,12 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], GenericData.Recor
       if (schema == null)
         throw new IllegalStateException("Unknown schema id: " + id);
       logger.debug(schema.toString());
+      String subject = constructSubject(topic, schema, true);
+      int latestVersion = getLatestSchema(subject, url).getVersion();
+      if (latestVersion > initLatestVersion) {
+        throw new MessageDecoderException(
+            "Producer produce data with schema version larger than the schema known to Camus");
+      }
       int length = buffer.limit() - 1 - idSize;
       if (schema.getType().equals(Schema.Type.BYTES)) {
         byte[] bytes = new byte[length];
@@ -73,7 +112,7 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], GenericData.Recor
         return bytes;
       }
       int start = buffer.position() + buffer.arrayOffset();
-      DatumReader<Object> reader = new GenericDatumReader<Object>(schema);
+      DatumReader<Object> reader = new GenericDatumReader<Object>(latestSchema);
       Object object =
           reader.read(null, decoderFactory.binaryDecoder(buffer.array(), start, length, null));
 
@@ -87,7 +126,6 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], GenericData.Recor
       throw new MessageDecoderException("Error deserializing Avro message", re);
     }
   }
-
 
   public CamusWrapper<Record> decode(byte[] payload) {
     Object object = deserialize(payload);
