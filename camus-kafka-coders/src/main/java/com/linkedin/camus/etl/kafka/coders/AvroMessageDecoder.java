@@ -1,5 +1,6 @@
 package com.linkedin.camus.etl.kafka.coders;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.linkedin.camus.coders.CamusWrapper;
 import com.linkedin.camus.coders.MessageDecoder;
 import com.linkedin.camus.coders.MessageDecoderException;
@@ -20,6 +21,7 @@ import java.util.Properties;
 
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
+import io.confluent.kafka.schemaregistry.client.rest.entities.requests.RegisterSchemaRequest;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.schemaregistry.client.rest.utils.RestUtils;
 
@@ -27,9 +29,9 @@ import io.confluent.kafka.schemaregistry.client.rest.utils.RestUtils;
 public class AvroMessageDecoder extends MessageDecoder<byte[], GenericData.Record> {
   private static final byte MAGIC_BYTE = 0x0;
   private static final int idSize = 4;
-  private final String SCHEMA_REGISTRY_URL = "schema.registry.url";
-  private final String MAX_SCHEMAS_PER_SUBJECT = "max.schemas.per.subject";
-  private final String DEFAULT_MAX_SCHEMAS_PER_SUBJECT = "1000";
+  private static final String SCHEMA_REGISTRY_URL = "schema.registry.url";
+  private static final String MAX_SCHEMAS_PER_SUBJECT = "max.schemas.per.subject";
+  private static final String DEFAULT_MAX_SCHEMAS_PER_SUBJECT = "1000";
   private static final Logger logger = Logger.getLogger(AvroMessageDecoder.class);
   protected DecoderFactory decoderFactory;
   private SchemaRegistryClient schemaRegistry;
@@ -38,7 +40,11 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], GenericData.Recor
   private Schema latestSchema;
   private int initLatestVersion;
   private String topic;
-
+  private final static TypeReference<io.confluent.kafka.schemaregistry.client.rest.entities.Schema>
+      GET_SCHEMA_BY_VERSION_RESPONSE_TYPE =
+      new TypeReference<io.confluent.kafka.schemaregistry.client.rest.entities.Schema>() {
+      };
+  
   @Override
   public void init(Properties props, String topicName) {
     super.init(props, topicName);
@@ -71,17 +77,36 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], GenericData.Recor
     return buffer;
   }
 
-
-  private io.confluent.kafka.schemaregistry.client.rest.entities.Schema getLatestSchema(String subject, String url) {
+  private io.confluent.kafka.schemaregistry.client.rest.entities.Schema getLatestSchema(String subject, String baseUrl) {
     try {
-     return RestUtils.getVersion(url, RestUtils.DEFAULT_REQUEST_PROPERTIES, subject, -1);
-    } catch (IOException e) {
+      String url = String.format("%s/subjects/%s/versions/%s", baseUrl, subject, "latest");
+
+      io.confluent.kafka.schemaregistry.client.rest.entities.Schema response =
+          RestUtils.httpRequest(
+              url, "GET", null, RestUtils.DEFAULT_REQUEST_PROPERTIES, GET_SCHEMA_BY_VERSION_RESPONSE_TYPE);
+    } catch (IOException ioe) {
+      ioe.printStackTrace();
+    } catch (RestClientException re) {
+      re.printStackTrace();
+    }
+    return null;
+  }
+
+  private io.confluent.kafka.schemaregistry.client.rest.entities.Schema getLatestVersion(
+      String subject, Schema schema, String url) {
+    try {
+      String schemaString = schema.toString();
+      RegisterSchemaRequest request = new RegisterSchemaRequest();
+      request.setSchema(schemaString);
+      return RestUtils.lookUpSubjectVersion(url, RestUtils.DEFAULT_REQUEST_PROPERTIES, request, subject);
+    } catch (IOException ioe) {
 
     } catch (RestClientException re) {
 
     }
     return null;
   }
+
 
   private String constructSubject(String topic, Schema schema, boolean isNew) {
     if (isNew) {
