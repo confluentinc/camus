@@ -1,6 +1,20 @@
+/**
+ * Copyright 2014 Confluent Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.linkedin.camus.etl.kafka.coders;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.linkedin.camus.coders.CamusWrapper;
 import com.linkedin.camus.coders.MessageDecoder;
 import com.linkedin.camus.coders.MessageDecoderException;
@@ -21,50 +35,51 @@ import java.util.Properties;
 
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
-import io.confluent.kafka.schemaregistry.client.rest.entities.requests.RegisterSchemaRequest;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
-import io.confluent.kafka.schemaregistry.client.rest.utils.RestUtils;
 
-
-public class AvroMessageDecoder extends MessageDecoder<byte[], GenericData.Record> {
+public class AvroMessageDecoder extends MessageDecoder<byte[], Record> {
   private static final byte MAGIC_BYTE = 0x0;
   private static final int idSize = 4;
   private static final String SCHEMA_REGISTRY_URL = "schema.registry.url";
   private static final String MAX_SCHEMAS_PER_SUBJECT = "max.schemas.per.subject";
   private static final String DEFAULT_MAX_SCHEMAS_PER_SUBJECT = "1000";
+  private static final String IS_NEW_PRODUCER = "is.new.producer";
   private static final Logger logger = Logger.getLogger(AvroMessageDecoder.class);
   protected DecoderFactory decoderFactory;
   private SchemaRegistryClient schemaRegistry;
-  private String url;
   private final Schema.Parser parser = new Schema.Parser();
   private Schema latestSchema;
-  private int initLatestVersion;
+  private int latestVersion;
   private String topic;
-  private final static TypeReference<io.confluent.kafka.schemaregistry.client.rest.entities.Schema>
-      GET_SCHEMA_BY_VERSION_RESPONSE_TYPE =
-      new TypeReference<io.confluent.kafka.schemaregistry.client.rest.entities.Schema>() {
-      };
-  
+  private boolean isNew;
+
+  public AvroMessageDecoder(SchemaRegistryClient schemaRegistry) {
+    this.schemaRegistry = schemaRegistry;
+  }
+
+  public AvroMessageDecoder() {
+
+  }
+
   @Override
   public void init(Properties props, String topicName) {
     super.init(props, topicName);
+
     decoderFactory = DecoderFactory.get();
     if (props == null) {
       throw new IllegalArgumentException("Missing schema registry url!");
     }
-    url = props.getProperty(SCHEMA_REGISTRY_URL);
-    if (url == null) {
+    String baseUrl = props.getProperty(SCHEMA_REGISTRY_URL);
+    if (baseUrl == null) {
       throw new IllegalArgumentException("Missing schema registry url!");
     }
     String maxSchemaObject = props.getProperty(
         MAX_SCHEMAS_PER_SUBJECT, DEFAULT_MAX_SCHEMAS_PER_SUBJECT);
-    schemaRegistry = new CachedSchemaRegistryClient(url, Integer.parseInt(maxSchemaObject));
-    String subject = topicName + "-value";
-    io.confluent.kafka.schemaregistry.client.rest.entities.Schema restSchema =
-        getLatestSchema(subject, url);
+    if (schemaRegistry == null) {
+      schemaRegistry = new CachedSchemaRegistryClient(baseUrl, Integer.parseInt(maxSchemaObject));
+    }
+    this.isNew = Boolean.parseBoolean(props.getProperty(IS_NEW_PRODUCER, "true"));
     this.topic = topicName;
-    this.latestSchema = parser.parse(restSchema.getSchema());
-    this.initLatestVersion = restSchema.getVersion();
   }
 
   private ByteBuffer getByteBuffer(byte[] payload) {
@@ -77,39 +92,8 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], GenericData.Recor
     return buffer;
   }
 
-  private io.confluent.kafka.schemaregistry.client.rest.entities.Schema getLatestSchema(String subject, String baseUrl) {
-    try {
-      String url = String.format("%s/subjects/%s/versions/%s", baseUrl, subject, "latest");
-
-      io.confluent.kafka.schemaregistry.client.rest.entities.Schema response =
-          RestUtils.httpRequest(
-              url, "GET", null, RestUtils.DEFAULT_REQUEST_PROPERTIES, GET_SCHEMA_BY_VERSION_RESPONSE_TYPE);
-    } catch (IOException ioe) {
-      ioe.printStackTrace();
-    } catch (RestClientException re) {
-      re.printStackTrace();
-    }
-    return null;
-  }
-
-  private io.confluent.kafka.schemaregistry.client.rest.entities.Schema getLatestVersion(
-      String subject, Schema schema, String url) {
-    try {
-      String schemaString = schema.toString();
-      RegisterSchemaRequest request = new RegisterSchemaRequest();
-      request.setSchema(schemaString);
-      return RestUtils.lookUpSubjectVersion(url, RestUtils.DEFAULT_REQUEST_PROPERTIES, request, subject);
-    } catch (IOException ioe) {
-
-    } catch (RestClientException re) {
-
-    }
-    return null;
-  }
-
-
-  private String constructSubject(String topic, Schema schema, boolean isNew) {
-    if (isNew) {
+  private String constructSubject(String topic, Schema schema, boolean isNewProducer) {
+    if (isNewProducer) {
       return topic + "-value";
     } else {
       return schema.getName() + "-value";
@@ -124,12 +108,20 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], GenericData.Recor
       if (schema == null)
         throw new IllegalStateException("Unknown schema id: " + id);
       logger.debug(schema.toString());
-      String subject = constructSubject(topic, schema, true);
-      int latestVersion = getLatestSchema(subject, url).getVersion();
-      if (latestVersion > initLatestVersion) {
-        throw new MessageDecoderException(
-            "Producer produce data with schema version larger than the schema known to Camus");
+      String subject = constructSubject(topic, schema, isNew);
+      logger.debug("Subject = " + subject);
+      if (latestSchema == null) {
+        latestSchema = parser.parse(schemaRegistry.getLatestSchema(subject));
+        latestVersion = schemaRegistry.getLatestVersion(subject);
       }
+
+      int version = schemaRegistry.getVersion(subject, schema);
+      if (version > latestVersion) {
+        String errorMsg = String.format(
+            "Producer schema is newer than the schema known to Camus");
+        throw new MessageDecoderException(errorMsg);
+      }
+
       int length = buffer.limit() - 1 - idSize;
       if (schema.getType().equals(Schema.Type.BYTES)) {
         byte[] bytes = new byte[length];
@@ -161,8 +153,8 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], GenericData.Recor
     }
   }
 
-  private static class CamusAvroWrapper extends CamusWrapper<Record> {
-    public CamusAvroWrapper(GenericData.Record record) {
+  public static class CamusAvroWrapper extends CamusWrapper<Record> {
+    public CamusAvroWrapper(Record record) {
       super(record);
       GenericData.Record header = (Record) super.getRecord().get("header");
       if (header != null) {

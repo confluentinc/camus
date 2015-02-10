@@ -130,7 +130,7 @@ public class KafkaCluster {
       this.port = getAvailablePort();
       this.snapshotDir = getTempDir();
       this.logDir = getTempDir();
-      this.factory = new NIOServerCnxn.Factory(new InetSocketAddress("localhost", port), 1024);
+      this.factory = new NIOServerCnxn.Factory(new InetSocketAddress("127.0.0.1", port), 1024);
 
       try {
         int tickTime = 500;
@@ -150,7 +150,7 @@ public class KafkaCluster {
     }
 
     public String getConnection() {
-      return "localhost:" + port;
+      return "127.0.0.1:" + port;
     }
 
   }
