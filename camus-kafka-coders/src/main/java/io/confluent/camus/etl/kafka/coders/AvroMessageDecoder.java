@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.linkedin.camus.etl.kafka.coders;
+package io.confluent.camus.etl.kafka.coders;
 
 import com.linkedin.camus.coders.CamusWrapper;
 import com.linkedin.camus.coders.MessageDecoder;
@@ -36,6 +36,7 @@ import java.util.Properties;
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
+import io.confluent.kafka.schemaregistry.client.SchemaMetadata;
 
 public class AvroMessageDecoder extends MessageDecoder<byte[], Record> {
   private static final byte MAGIC_BYTE = 0x0;
@@ -110,9 +111,14 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], Record> {
       logger.debug(schema.toString());
       String subject = constructSubject(topic, schema, isNew);
       logger.debug("Subject = " + subject);
+
+      // We need initialize latestSchema and latestVersion here
+      // to handle both old and new producers as we don't
+      // the Avro record name yet during decoder creation.
       if (latestSchema == null) {
-        latestSchema = parser.parse(schemaRegistry.getLatestSchema(subject));
-        latestVersion = schemaRegistry.getLatestVersion(subject);
+        SchemaMetadata metadata = schemaRegistry.getLatestSchemaMetadata(subject);
+        latestSchema = parser.parse(metadata.getSchema());
+        latestVersion = metadata.getVersion();
       }
 
       int version = schemaRegistry.getVersion(subject, schema);
@@ -129,7 +135,7 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], Record> {
         return bytes;
       }
       int start = buffer.position() + buffer.arrayOffset();
-      DatumReader<Object> reader = new GenericDatumReader<Object>(latestSchema);
+      DatumReader<Object> reader = new GenericDatumReader<Object>(schema, latestSchema);
       Object object =
           reader.read(null, decoderFactory.binaryDecoder(buffer.array(), start, length, null));
 

@@ -13,14 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.linkedin.camus.etl.kafka.coders;
+package io.confluent.camus.etl.kafka.coders;
 
-import com.linkedin.camus.coders.CamusWrapper;
 import com.linkedin.camus.coders.MessageDecoderException;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
-import org.apache.avro.generic.GenericData.Record;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -28,6 +26,8 @@ import org.junit.Test;
 
 import java.util.Properties;
 
+import io.confluent.camus.etl.kafka.coders.AvroMessageDecoder;
+import io.confluent.kafka.schemaregistry.client.LocalSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.serializers.KafkaAvroEncoder;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
@@ -55,7 +55,7 @@ public class AvroMessageDecoderTest {
     String userSchemaWithId = "{\"namespace\": \"example.avro\", \"type\": \"record\", " +
                       "\"name\": \"User\"," +
                       "\"fields\": [{\"name\": \"name\", \"type\": \"string\"}, "
-                      + "{\"name\": \"id\", \"type\": \"int\"}]}";
+                      + "{\"name\": \"id\", \"type\": \"int\", \"default\": 0}]}";
     Schema.Parser parser = new Schema.Parser();
     Schema schema = parser.parse(userSchemaWithId);
     GenericRecord avroRecord = new GenericData.Record(schema);
@@ -84,35 +84,53 @@ public class AvroMessageDecoderTest {
   @Test
   public void testAvroDecoder() {
     String topic = "testAvro";
+
     Object avroRecord = createAvroRecordVersion1();
     byte[] payload = avroSerializer.serialize(topic, avroRecord);
     AvroMessageDecoder decoder = createAvroDecoder(topic, true, schemaRegistry);
 
-    CamusWrapper<Record> wrapper = decoder.decode(payload);
-    Object record = wrapper.getRecord();
+    Object record = decoder.decode(payload).getRecord();
     assertEquals(avroRecord, record);
 
     payload= avroEncoder.toBytes(avroRecord);
     AvroMessageDecoder decoder2 = createAvroDecoder(topic, false, schemaRegistry);
-    wrapper = decoder2.decode(payload);
-    record = wrapper.getRecord();
+    record = decoder2.decode(payload).getRecord();
     assertEquals(avroRecord, record);
+  }
+
+  @Test
+  public void testAvroDecoderCompatible() {
+    String topic = "testAvro";
+
+    Object avroRecordV1 = createAvroRecordVersion1();
+    byte[] payloadV1 = avroSerializer.serialize(topic, avroRecordV1);
+    Object avroRecordV2 = createAvroRecordVersion2();
+    byte[] payloadV2 = avroSerializer.serialize(topic, avroRecordV2);
+
+    AvroMessageDecoder decoder = createAvroDecoder(topic, true, schemaRegistry);
+    try {
+      decoder.decode(payloadV1).getRecord();
+    } catch (MessageDecoderException e) {
+      fail("Backward compatible schema should be able to decode Avro records with old schema");
+    }
+    Object recordV2 = decoder.decode(payloadV2).getRecord();
+
+    assertEquals(avroRecordV2, recordV2);
   }
 
   @Test
   public void testAvroDecoderFailure() {
     String topic = "testAvro";
-    Object avroRecord = createAvroRecordVersion1();
-    byte[] payload = avroSerializer.serialize(topic, avroRecord);
+
+    Object avroRecordV1 = createAvroRecordVersion1();
+    byte[] payloadV1 = avroSerializer.serialize(topic, avroRecordV1);
     AvroMessageDecoder decoder = createAvroDecoder(topic, true, schemaRegistry);
-    // decode() initializes latestSchama and latestVersion in AvroMessageDecoder
-    // This is needed to handle both old and new producer as we don't know teh
-    // avro record name in init()
-    decoder.decode(payload);
-    Object avroRecord2 = createAvroRecordVersion2();
-    payload = avroSerializer.serialize(topic, avroRecord2);
+
+    decoder.decode(payloadV1);
+    Object avroRecordV2 = createAvroRecordVersion2();
+    byte[] payloadV2 = avroSerializer.serialize(topic, avroRecordV2);
     try {
-      decoder.decode(payload);
+      decoder.decode(payloadV2);
       fail("AvroMessageDecoder should not be able to decode Avro record with new schema version");
     } catch (MessageDecoderException e) {
       assertEquals(e.getMessage(),
