@@ -34,9 +34,9 @@ import java.nio.ByteBuffer;
 import java.util.Properties;
 
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
+import io.confluent.kafka.schemaregistry.client.SchemaMetadata;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
-import io.confluent.kafka.schemaregistry.client.SchemaMetadata;
 
 public class AvroMessageDecoder extends MessageDecoder<byte[], Record> {
   private static final byte MAGIC_BYTE = 0x0;
@@ -48,7 +48,6 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], Record> {
   private static final Logger logger = Logger.getLogger(AvroMessageDecoder.class);
   protected DecoderFactory decoderFactory;
   private SchemaRegistryClient schemaRegistry;
-  private final Schema.Parser parser = new Schema.Parser();
   private Schema latestSchema;
   private int latestVersion;
   private String topic;
@@ -103,6 +102,9 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], Record> {
 
   private Object deserialize(byte[] payload) throws MessageDecoderException {
     try {
+      if (payload == null) {
+        return null;
+      }
       ByteBuffer buffer = getByteBuffer(payload);
       int id = buffer.getInt();
       Schema schema = schemaRegistry.getByID(id);
@@ -117,7 +119,7 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], Record> {
       // the Avro record name yet during decoder creation.
       if (latestSchema == null) {
         SchemaMetadata metadata = schemaRegistry.getLatestSchemaMetadata(subject);
-        latestSchema = parser.parse(metadata.getSchema());
+        latestSchema = new Schema.Parser().parse(metadata.getSchema());
         latestVersion = metadata.getVersion();
       }
 
