@@ -46,6 +46,9 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], Record> {
   private static final String DEFAULT_MAX_SCHEMAS_PER_SUBJECT = "1000";
   private static final String IS_NEW_PRODUCER = "is.new.producer";
   private static final Logger logger = Logger.getLogger(AvroMessageDecoder.class);
+  public static final Text SERVER = new Text("server");
+  public static final Text SERVICE = new Text("service");
+  private static final AvroMessageDecoder.CamusAvroWrapper camusWrapper = new CamusAvroWrapper();
   protected DecoderFactory decoderFactory;
   private SchemaRegistryClient schemaRegistry;
   private Schema latestSchema;
@@ -155,25 +158,26 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], Record> {
   public CamusWrapper<Record> decode(byte[] payload) {
     Object object = deserialize(payload);
     if (object instanceof Record) {
-      return new CamusAvroWrapper((Record) object);
+
+      this.camusWrapper.set((Record) object);
+
+      GenericData.Record header = (Record) this.camusWrapper.getRecord().get("header");
+      if (header != null) {
+        if (header.get("server") != null) {
+          this.camusWrapper.put(SERVER, new Text(header.get("server").toString()));
+        }
+        if (header.get("service") != null) {
+          this.camusWrapper.put(SERVICE, new Text(header.get("service").toString()));
+        }
+      }
+
+      return this.camusWrapper;
     } else {
       throw new MessageDecoderException("Camus does not support Avro primitive types!");
     }
   }
 
   public static class CamusAvroWrapper extends CamusWrapper<Record> {
-    public CamusAvroWrapper(Record record) {
-      super(record);
-      GenericData.Record header = (Record) super.getRecord().get("header");
-      if (header != null) {
-        if (header.get("server") != null) {
-          put(new Text("server"), new Text(header.get("server").toString()));
-        }
-        if (header.get("service") != null) {
-          put(new Text("service"), new Text(header.get("service").toString()));
-        }
-      }
-    }
 
     @Override
     public long getTimestamp() {
