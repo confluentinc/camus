@@ -21,6 +21,9 @@ import org.apache.hadoop.io.Text;
 
 
 public class KafkaAvroMessageDecoder extends MessageDecoder<byte[], Record> {
+  public static final Text SERVICE = new Text("service");
+  public static final Text SERVER = new Text("server");
+  protected static final KafkaAvroMessageDecoder.CamusAvroWrapper camusWrapper = new CamusAvroWrapper();
   protected DecoderFactory decoderFactory;
   protected SchemaRegistry<Schema> registry;
   private Schema latestSchema;
@@ -113,8 +116,20 @@ public class KafkaAvroMessageDecoder extends MessageDecoder<byte[], Record> {
           (helper.getTargetSchema() == null) ? new GenericDatumReader<Record>(helper.getSchema())
               : new GenericDatumReader<Record>(helper.getSchema(), helper.getTargetSchema());
 
-      return new CamusAvroWrapper(reader.read(null,
-          decoderFactory.binaryDecoder(helper.getBuffer().array(), helper.getStart(), helper.getLength(), null)));
+      Record header = (Record) this.camusWrapper.getRecord().get("header");
+      if (header != null) {
+        if (header.get("server") != null) {
+          this.camusWrapper.put(SERVER, new Text(header.get("server").toString()));
+        }
+        if (header.get("service") != null) {
+          this.camusWrapper.put(SERVICE, new Text(header.get("service").toString()));
+        }
+      }
+
+      this.camusWrapper.set(reader.read(null,
+              decoderFactory.binaryDecoder(helper.getBuffer().array(), helper.getStart(), helper.getLength(), null)));
+
+      return this.camusWrapper;
 
     } catch (IOException e) {
       throw new MessageDecoderException(e);
@@ -123,18 +138,6 @@ public class KafkaAvroMessageDecoder extends MessageDecoder<byte[], Record> {
 
   public static class CamusAvroWrapper extends CamusWrapper<Record> {
 
-    public CamusAvroWrapper(Record record) {
-      super(record);
-      Record header = (Record) super.getRecord().get("header");
-      if (header != null) {
-        if (header.get("server") != null) {
-          put(new Text("server"), new Text(header.get("server").toString()));
-        }
-        if (header.get("service") != null) {
-          put(new Text("service"), new Text(header.get("service").toString()));
-        }
-      }
-    }
 
     @Override
     public long getTimestamp() {

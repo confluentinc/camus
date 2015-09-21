@@ -15,22 +15,31 @@ import org.apache.hadoop.io.Writable;
 public class CamusWrapper<R> {
     private R record;
     private long timestamp;
-    private MapWritable partitionMap;
+    private MapWritable partitionMap = new MapWritable();
 
-    public CamusWrapper(R record) {
-        this(record, System.currentTimeMillis());
+    public static final Text SERVER = new Text("server");
+    public static final Text SERVICE = new Text("service");
+    public static final Text DEFAULT_SERVER = new Text("unknown_server");
+    public static final Text DEFAULT_SERVICE = new Text("unknown_service");
+
+    public CamusWrapper() {
+        super();
     }
 
-    public CamusWrapper(R record, long timestamp) {
-        this(record, timestamp, "unknown_server", "unknown_service");
+    public void set(R record) {
+        this.set(record, System.currentTimeMillis());
     }
 
-    public CamusWrapper(R record, long timestamp, String server, String service) {
+    public void set(R record, long timestamp) {
+        this.set(record, timestamp, DEFAULT_SERVER, DEFAULT_SERVICE);
+    }
+
+    public void set(R record, long timestamp, Text server, Text service) {
         this.record = record;
         this.timestamp = timestamp;
-        this.partitionMap = new MapWritable();
-        partitionMap.put(new Text("server"), new Text(server));
-        partitionMap.put(new Text("service"), new Text(service));
+        this.partitionMap.clear();
+        partitionMap.put(this.SERVER, server);
+        partitionMap.put(this.SERVICE, service);
     }
 
     /**
