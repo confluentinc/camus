@@ -149,8 +149,8 @@ public class AvroMessageDecoderTest {
 
     IndexedRecord avroRecordV1 = createAvroRecordVersion1();
     byte[] payloadV1 = avroSerializer.serialize(avroRecordV1.getSchema().getName(), avroRecordV1);
-    Object avroRecordV2 = createAvroRecordVersion2();
-    byte[] payloadV2 = avroSerializer.serialize(topic, avroRecordV2);
+    IndexedRecord avroRecordV2 = createAvroRecordVersion2();
+    byte[] payloadV2 = avroSerializer.serialize(avroRecordV2.getSchema().getName(), avroRecordV2);
 
     AvroMessageDecoder decoder = createAvroDecoder(topic, true, schemaRegistry);
     try {
@@ -168,12 +168,12 @@ public class AvroMessageDecoderTest {
     String topic = "testAvro";
 
     IndexedRecord avroRecordV1 = createAvroRecordVersion1();
-    byte[] payloadV1 = avroSerializer.serialize(topic, avroRecordV1);
+    byte[] payloadV1 = avroSerializer.serialize(avroRecordV1.getSchema().getName(), avroRecordV1);
     AvroMessageDecoder decoder = createAvroDecoder(topic, true, schemaRegistry);
 
     decoder.decode(new TestMessage(payloadV1));
-    Object avroRecordV2 = createAvroRecordVersion2();
-    byte[] payloadV2 = avroSerializer.serialize(topic, avroRecordV2);
+    IndexedRecord avroRecordV2 = createAvroRecordVersion2();
+    byte[] payloadV2 = avroSerializer.serialize(avroRecordV2.getSchema().getName(), avroRecordV2);
     try {
       decoder.decode(new TestMessage(payloadV2));
       fail("AvroMessageDecoder should not be able to decode Avro record with new schema version");
