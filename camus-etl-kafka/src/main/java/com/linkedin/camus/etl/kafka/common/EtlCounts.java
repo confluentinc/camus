@@ -237,7 +237,11 @@ public class EtlCounts {
     props.put("producer.type", "async");
     props.put("request.required.acks", "1");
     props.put("request.timeout.ms", "30000");
-    log.debug("Broker list: " + brokerList);
+
+    if (log.isDebugEnabled()) {
+      log.debug("Broker list: " + brokerList);
+    }
+
     Producer producer = new Producer(new ProducerConfig(props));
     try {
       for (byte[] message : monitorSet) {

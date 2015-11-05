@@ -29,8 +29,10 @@ public abstract class CamusSweeperPlanner {
   // folder
   protected boolean shouldReprocess(FileSystem fs, List<Path> sources, Path dest) throws IOException {
 
-    log.debug("source:" + sources.toString());
-    log.debug("dest:" + dest.toString());
+    if (log.isDebugEnabled()) {
+      log.debug("source:" + sources.toString());
+      log.debug("dest:" + dest.toString());
+    }
 
     FileStatus destStatus = fs.getFileStatus(dest);
     long destinationModTime = destStatus.getModificationTime();
@@ -46,8 +48,10 @@ public abstract class CamusSweeperPlanner {
   private boolean shouldReprocess(FileSystem fs, Path source, long destinationModTime) throws IOException {
     FileStatus sourceStatus = fs.getFileStatus(source);
 
-    log.debug("source mod:" + sourceStatus.getModificationTime());
-    log.debug("dest mod:" + destinationModTime);
+    if (log.isDebugEnabled())  {
+      log.debug("source mod:" + sourceStatus.getModificationTime());
+      log.debug("dest mod:" + destinationModTime);
+    }
 
     if (sourceStatus.getModificationTime() > destinationModTime) {
       return true;

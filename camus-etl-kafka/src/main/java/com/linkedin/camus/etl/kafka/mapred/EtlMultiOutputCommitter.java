@@ -129,7 +129,11 @@ public class EtlMultiOutputCommitter extends FileOutputCommitter {
         log.info("Writing counts to : " + tempPath.toString());
         long time = System.currentTimeMillis();
         mapper.writeValue(outputStream, allCountObject);
-        log.debug("Time taken : " + (System.currentTimeMillis() - time) / 1000);
+
+        if (log.isDebugEnabled()) {
+          log.debug("Time taken : " + (System.currentTimeMillis() - time) / 1000);
+        }
+
       }
     } else {
       log.info("Not moving run data.");

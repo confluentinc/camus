@@ -146,7 +146,11 @@ public class KafkaReader {
     }
     long tempTime = System.currentTimeMillis();
     TopicAndPartition topicAndPartition = new TopicAndPartition(kafkaRequest.getTopic(), kafkaRequest.getPartition());
-    log.debug("\nAsking for offset : " + (currentOffset));
+
+    if (log.isDebugEnabled()) {
+      log.debug("\nAsking for offset : " + (currentOffset));
+    }
+
     PartitionFetchInfo partitionFetchInfo = new PartitionFetchInfo(currentOffset, fetchBufferSize);
 
     HashMap<TopicAndPartition, PartitionFetchInfo> fetchInfo = new HashMap<TopicAndPartition, PartitionFetchInfo>();
@@ -168,8 +172,12 @@ public class KafkaReader {
         ByteBufferMessageSet messageBuffer =
             fetchResponse.messageSet(kafkaRequest.getTopic(), kafkaRequest.getPartition());
         lastFetchTime = (System.currentTimeMillis() - tempTime);
-        log.debug("Time taken to fetch : " + (lastFetchTime / 1000) + " seconds");
-        log.debug("The size of the ByteBufferMessageSet returned is : " + messageBuffer.sizeInBytes());
+
+        if (log.isDebugEnabled()) {
+          log.debug("Time taken to fetch : " + (lastFetchTime / 1000) + " seconds");
+          log.debug("The size of the ByteBufferMessageSet returned is : " + messageBuffer.sizeInBytes());
+        }
+
         int skipped = 0;
         totalFetchTime += lastFetchTime;
         messageIter = messageBuffer.iterator();
@@ -182,14 +190,25 @@ public class KafkaReader {
             //flag = true;
             skipped++;
           } else {
-            log.debug("Skipped offsets till : " + message.offset());
+            if (log.isDebugEnabled()) {
+              log.debug("Skipped offsets till : " + message.offset());
+            }
+
             break;
           }
         }
-        log.debug("Number of offsets to be skipped: " + skipped);
+
+        if (log.isDebugEnabled()) {
+          log.debug("Number of offsets to be skipped: " + skipped);
+        }
+
         while (skipped != 0) {
           MessageAndOffset skippedMessage = messageIter.next();
-          log.debug("Skipping offset : " + skippedMessage.offset());
+
+          if (log.isDebugEnabled()) {
+            log.debug("Skipping offset : " + skippedMessage.offset());
+          }
+
           skipped--;
         }
 
