@@ -95,9 +95,9 @@ public class AvroMessageDecoder extends MessageDecoder<Message, Record> {
 
   private String constructSubject(String topic, Schema schema, boolean isNewProducer) {
     if (isNewProducer) {
-      return topic + "-value";
-    } else {
       return schema.getName() + "-value";
+    } else {
+      return topic + "-value";
     }
   }
 

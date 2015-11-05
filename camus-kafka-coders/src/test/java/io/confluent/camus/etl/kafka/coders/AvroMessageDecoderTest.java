@@ -130,14 +130,14 @@ public class AvroMessageDecoderTest {
   public void testAvroDecoder() {
     String topic = "testAvro";
 
-    Object avroRecord = createAvroRecordVersion1();
-    byte[] payload = avroSerializer.serialize(topic, avroRecord);
+    IndexedRecord avroRecord = createAvroRecordVersion1();
+    byte[] payload = avroSerializer.serialize(avroRecord.getSchema().getName(), avroRecord);
     AvroMessageDecoder decoder = createAvroDecoder(topic, true, schemaRegistry);
 
     Object record = decoder.decode(new TestMessage(payload)).getRecord();
     assertEquals(avroRecord, record);
 
-    payload= avroEncoder.toBytes(avroRecord);
+    byte[] payload2 = avroSerializer.serialize(topic, avroRecord);
     AvroMessageDecoder decoder2 = createAvroDecoder(topic, false, schemaRegistry);
     record = decoder2.decode(new TestMessage(payload)).getRecord();
     assertEquals(avroRecord, record);
@@ -147,8 +147,8 @@ public class AvroMessageDecoderTest {
   public void testAvroDecoderCompatible() {
     String topic = "testAvro";
 
-    Object avroRecordV1 = createAvroRecordVersion1();
-    byte[] payloadV1 = avroSerializer.serialize(topic, avroRecordV1);
+    IndexedRecord avroRecordV1 = createAvroRecordVersion1();
+    byte[] payloadV1 = avroSerializer.serialize(avroRecordV1.getSchema().getName(), avroRecordV1);
     Object avroRecordV2 = createAvroRecordVersion2();
     byte[] payloadV2 = avroSerializer.serialize(topic, avroRecordV2);
 
@@ -167,7 +167,7 @@ public class AvroMessageDecoderTest {
   public void testAvroDecoderFailure() {
     String topic = "testAvro";
 
-    Object avroRecordV1 = createAvroRecordVersion1();
+    IndexedRecord avroRecordV1 = createAvroRecordVersion1();
     byte[] payloadV1 = avroSerializer.serialize(topic, avroRecordV1);
     AvroMessageDecoder decoder = createAvroDecoder(topic, true, schemaRegistry);
 
