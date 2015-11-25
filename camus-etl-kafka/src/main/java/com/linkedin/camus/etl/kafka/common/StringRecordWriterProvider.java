@@ -14,8 +14,6 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.compress.CompressionCodec;
-import org.apache.hadoop.io.compress.GzipCodec;
-import org.apache.hadoop.io.compress.SnappyCodec;
 import org.apache.hadoop.io.compress.DefaultCodec;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
@@ -39,6 +37,8 @@ public class StringRecordWriterProvider implements RecordWriterProvider {
   private boolean isCompressed = false;
   private CompressionCodec codec = null;
 
+  private static Logger log = Logger.getLogger(StringRecordWriterProvider.class);
+
   public StringRecordWriterProvider(TaskAttemptContext context) {
     Configuration conf = context.getConfiguration();
 
@@ -50,13 +50,24 @@ public class StringRecordWriterProvider implements RecordWriterProvider {
 
     if (isCompressed) {
       Class<? extends CompressionCodec> codecClass = null;
-      if ("snappy".equals(EtlMultiOutputFormat.getEtlOutputCodec(context))) {
-        codecClass = SnappyCodec.class;
-      } else if ("gzip".equals((EtlMultiOutputFormat.getEtlOutputCodec(context)))) {
-        codecClass = GzipCodec.class;
-      } else {
+      try {
+        Class<?> compressionClass = Class.forName(EtlMultiOutputFormat.getEtlOutputCodec(context));
+
+        if(CompressionCodec.class.isAssignableFrom(compressionClass)){
+          codecClass = (Class<? extends CompressionCodec>) compressionClass;
+        }
+        else{
+          log.warn("Codec class " + EtlMultiOutputFormat.getEtlOutputCodec(context)
+                  + " is not a valid compression class, using DefaultCodec");
+          codecClass = DefaultCodec.class;
+        }
+      } catch (ClassNotFoundException e) {
+        log.warn("Codec class " + EtlMultiOutputFormat.getEtlOutputCodec(context)
+                + " not found, using DefaultCodec to compress data.");
+        e.printStackTrace();
         codecClass = DefaultCodec.class;
       }
+      
       codec = ReflectionUtils.newInstance(codecClass, conf);
       extension = codec.getDefaultExtension();
     }
