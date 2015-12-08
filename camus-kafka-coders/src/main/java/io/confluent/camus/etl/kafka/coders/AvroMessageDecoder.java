@@ -85,7 +85,11 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], Record> {
   private ByteBuffer getByteBuffer(byte[] payload) {
     ByteBuffer buffer = ByteBuffer.wrap(payload);
     byte magic = buffer.get();
-    logger.debug("MAGIC BYTE" + magic);
+
+    if (logger.isDebugEnabled()) {
+      logger.debug("MAGIC BYTE" + magic);
+    }
+
     if (magic != MAGIC_BYTE) {
       throw new MessageDecoderException("Unknown magic byte!");
     }
@@ -108,11 +112,16 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], Record> {
       ByteBuffer buffer = getByteBuffer(payload);
       int id = buffer.getInt();
       Schema schema = schemaRegistry.getByID(id);
-      if (schema == null)
+      if (schema == null) {
         throw new IllegalStateException("Unknown schema id: " + id);
-      logger.debug("Schema = " + schema.toString());
+      }
+
       String subject = constructSubject(topic, schema, isNew);
-      logger.debug("Subject = " + subject);
+
+      if (logger.isDebugEnabled()) {
+        logger.debug("Schema = " + schema.toString());
+        logger.debug("Subject = " + subject);
+      }
 
       // We need to initialize latestSchema and latestVersion here
       // to handle both old and new producers as we don't know

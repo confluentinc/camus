@@ -95,7 +95,10 @@ public class CamusCleaner extends Configured implements Tool {
 
     sourcePath = fs.getFileStatus(new Path(fromLocation)).getPath();
 
-    log.debug("Path : " + sourcePath);
+    if (log.isDebugEnabled()) {
+      log.debug("Path : " + sourcePath);
+    }
+
     simulate = Boolean.parseBoolean(props.getProperty(SIMULATE, "false"));
     force = Boolean.parseBoolean(props.getProperty(FORCE, "false"));
 
