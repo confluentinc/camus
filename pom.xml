@@ -18,7 +18,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<confluent.maven.repo>http://packages.confluent.io/maven/</confluent.maven.repo>
 		<kafka.scala.version>2.11</kafka.scala.version>
-		<kafka.version>0.10.1.0-SNAPSHOT</kafka.version>
+		<kafka.version>0.10.2.0-SNAPSHOT</kafka.version>
 	</properties>
 
 	<dependencyManagement>
