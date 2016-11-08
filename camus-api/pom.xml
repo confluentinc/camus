@@ -5,7 +5,7 @@
   <parent>
     <groupId>com.linkedin.camus</groupId>
     <artifactId>camus-parent</artifactId>
-        <version>3.2.0-SNAPSHOT</version>
+    <version>3.2.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>camus-api</artifactId>
@@ -18,6 +18,5 @@
       <artifactId>hadoop-client</artifactId>
     </dependency>
   </dependencies>
-
 
 </project>
