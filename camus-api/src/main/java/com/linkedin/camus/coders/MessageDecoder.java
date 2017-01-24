@@ -16,8 +16,8 @@ public abstract class MessageDecoder<M,R> {
 	protected String topicName;
 
 	public void init(Properties props, String topicName){
-	    this.props = props;
-        this.topicName = topicName;
+          this.props = props;
+          this.topicName = topicName;
 	}
 
 	public abstract CamusWrapper<R> decode(M message) ;
