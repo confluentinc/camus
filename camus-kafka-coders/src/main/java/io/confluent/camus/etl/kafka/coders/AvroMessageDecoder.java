@@ -27,10 +27,14 @@ import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.util.Utf8;
 import org.apache.hadoop.io.Text;
+import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Properties;
 
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
@@ -39,12 +43,14 @@ import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 
 public class AvroMessageDecoder extends MessageDecoder<byte[], Record> {
+  public static final Logger log = LogManager.getLogger(AvroMessageDecoder.class);
   private static final byte MAGIC_BYTE = 0x0;
   private static final int idSize = 4;
   private static final String SCHEMA_REGISTRY_URL = "schema.registry.url";
   private static final String MAX_SCHEMAS_PER_SUBJECT = "max.schemas.per.subject";
   private static final String DEFAULT_MAX_SCHEMAS_PER_SUBJECT = "1000";
   private static final String IS_NEW_PRODUCER = "is.new.producer";
+  private static final String AVRO_TS_FORMAT = "avro.timestamp.format";
   private static final Logger logger = Logger.getLogger(AvroMessageDecoder.class);
   protected DecoderFactory decoderFactory;
   private SchemaRegistryClient schemaRegistry;
@@ -80,6 +86,7 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], Record> {
     }
     this.isNew = Boolean.parseBoolean(props.getProperty(IS_NEW_PRODUCER, "true"));
     this.topic = topicName;
+    log.info("Custom timestamp defined? " + props.getProperty(AVRO_TS_FORMAT));
   }
 
   private ByteBuffer getByteBuffer(byte[] payload) {
@@ -157,13 +164,17 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], Record> {
   public CamusWrapper<Record> decode(byte[] payload) {
     Object object = deserialize(payload);
     if (object instanceof Record) {
-      return new CamusAvroWrapper((Record) object);
+      CamusAvroWrapper wrapper = new CamusAvroWrapper((Record) object);
+      wrapper.setConfig(props);
+      return wrapper;
     } else {
       throw new MessageDecoderException("Camus does not support Avro primitive types!");
     }
   }
 
   public static class CamusAvroWrapper extends CamusWrapper<Record> {
+    private Properties config;
+
     public CamusAvroWrapper(Record record) {
       super(record);
       GenericData.Record header = (Record) super.getRecord().get("header");
@@ -177,13 +188,42 @@ public class AvroMessageDecoder extends MessageDecoder<byte[], Record> {
       }
     }
 
+    public void setConfig(Properties props) {
+      this.config = props;
+    }
+
     @Override
     public long getTimestamp() {
       Record header = (Record) super.getRecord().get("header");
       if (header != null && header.get("time") != null) {
         return (Long) header.get("time");
-      } else if (super.getRecord().get("timestamp") != null) {
-        return (Long) super.getRecord().get("timestamp");
+      } else if ( super.getRecord().get("timestamp") != null) {
+        Object tsval = super.getRecord().get("timestamp");
+        // Check should be on config instead of data type
+        if (tsval instanceof Utf8) {
+          Utf8 tsUtf = (Utf8) tsval;
+          String tsFormat = config.getProperty(AVRO_TS_FORMAT);
+          if (tsFormat != null) {
+            String tsStr = tsUtf.toString();
+            SimpleDateFormat sdf = new SimpleDateFormat(tsFormat);
+            try {
+              Date dt = sdf.parse(tsStr);
+              return dt.getTime();
+            } catch (ParseException e) {
+              log.warn("Error parsing timestamp field " + tsStr + " for date format " + tsFormat
+                      + " Returning current time instead",
+                  e);
+              return System.currentTimeMillis();
+            }
+          } else {
+            return System.currentTimeMillis();
+          }
+        } else if (tsval instanceof Long) {
+          return (Long) tsval;
+        } else {
+          log.warn("Neither Long nor Utf8 timstamp field");
+          return System.currentTimeMillis();
+        }
       } else {
         return System.currentTimeMillis();
       }
