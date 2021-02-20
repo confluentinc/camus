@@ -8,7 +8,7 @@
 
 	<groupId>com.linkedin.camus</groupId>
 	<artifactId>camus-parent</artifactId>
-	<version>4.1.4-SNAPSHOT</version>
+	<version>4.1.5-SNAPSHOT</version>
 	<packaging>pom</packaging>
 	<name>Camus Parent</name>
 	<description>Camus is LinkedIn's Kafka->HDFS pipeline. It is a mapreduce job that does distributed data loads out of Kafka.</description>
@@ -243,7 +243,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>2.12.4</version>
+				<version>4.1.5-SNAPSHOT</version>
 				<configuration>
 					<argLine>-Djava.awt.headless=true</argLine>
 				</configuration>

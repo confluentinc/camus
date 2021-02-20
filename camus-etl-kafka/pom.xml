@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>com.linkedin.camus</groupId>
 		<artifactId>camus-parent</artifactId>
-		<version>4.1.4-SNAPSHOT</version>
+		<version>4.1.5-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>camus-etl-kafka</artifactId>
@@ -89,7 +89,7 @@
 		<dependency>
 			<groupId>com.indeed</groupId>
 			<artifactId>java-dogstatsd-client</artifactId>
-			<version>2.0.8</version>
+			<version>4.1.5-SNAPSHOT</version>
 		</dependency>
 	</dependencies>
 
