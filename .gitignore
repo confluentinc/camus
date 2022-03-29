@@ -22,6 +22,7 @@ target
 .idea
 **/dependency-reduced-pom.xml
 
+
 # target dirs
 camus-api/target/
 camus-etl-kafka/target/
