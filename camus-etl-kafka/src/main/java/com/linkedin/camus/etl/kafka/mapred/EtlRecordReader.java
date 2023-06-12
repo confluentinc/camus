@@ -117,15 +117,7 @@ public class EtlRecordReader extends RecordReader<EtlKey, CamusWrapper> {
   }
 
   private CamusWrapper getWrappedRecord(String topicName, byte[] payload) throws IOException {
-    CamusWrapper r = null;
-    try {
-      r = decoder.decode(payload);
-    } catch (Exception e) {
-      if (!skipSchemaErrors) {
-        throw new IOException(e);
-      }
-    }
-    return r;
+    return decoder.decode(payload);
   }
 
   private static byte[] getBytes(BytesWritable val) {
@@ -264,6 +256,9 @@ public class EtlRecordReader extends RecordReader<EtlKey, CamusWrapper> {
           try {
             wrapper = getWrappedRecord(key.getTopic(), bytes);
           } catch (Exception e) {
+            if (!skipSchemaErrors) {
+              throw new IOException(e.getMessage(), e);
+            }
             if (exceptionCount < getMaximumDecoderExceptionsToPrint(context)) {
               mapperContext.write(key, new ExceptionWritable(e));
               exceptionCount++;
