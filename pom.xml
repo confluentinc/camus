@@ -19,7 +19,7 @@
 		<confluent.maven.repo>http://packages.confluent.io/maven/</confluent.maven.repo>
 		<kafka.scala.version>2.11</kafka.scala.version>
 		<kafka.version>0.10.2.0-SNAPSHOT</kafka.version>
-		<avro.version>1.8.2</avro.version>
+		<avro.version>1.11.4</avro.version>
 	</properties>
 
 	<dependencyManagement>
