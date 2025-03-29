@@ -57,7 +57,7 @@
     <dependency>
        <groupId>com.sun.jersey.contribs</groupId>
        <artifactId>jersey-guice</artifactId>
-       <version>1.9</version>
+       <version>1.19.4</version>
     </dependency>
     <dependency>
        <groupId>com.google.inject.extensions</groupId>

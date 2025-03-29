@@ -18,8 +18,8 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<confluent.maven.repo>http://packages.confluent.io/maven/</confluent.maven.repo>
 		<kafka.scala.version>2.11</kafka.scala.version>
-		<kafka.version>0.10.2.0-SNAPSHOT</kafka.version>
-		<avro.version>1.11.4</avro.version>
+		<kafka.version>0.11.0.3-cp3</kafka.version>
+		<avro.version>1.12.0</avro.version>
 	</properties>
 
 	<dependencyManagement>
@@ -79,7 +79,7 @@
 			<dependency>
 				<groupId>org.apache.hadoop</groupId>
 				<artifactId>hadoop-client</artifactId>
-				<version>2.7.0</version>
+				<version>2.10.2</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.kafka</groupId>
@@ -99,7 +99,7 @@
 			<dependency>
 				<groupId>com.101tec</groupId>
 				<artifactId>zkclient</artifactId>
-				<version>0.8</version>
+				<version>0.11</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.zookeeper</groupId>
@@ -109,12 +109,12 @@
 			<dependency>
 				<groupId>junit</groupId>
 				<artifactId>junit</artifactId>
-				<version>4.13.1</version>
+				<version>4.13.2</version>
 			</dependency>
 			<dependency>
 				<groupId>org.scala-lang</groupId>
 				<artifactId>scala-library</artifactId>
-				<version>2.11.7</version>
+				<version>2.13.16</version>
 			</dependency>
 			<dependency>
 				<groupId>org.xerial.snappy</groupId>
@@ -124,12 +124,12 @@
 			<dependency>
 				<groupId>com.google.code.gson</groupId>
 				<artifactId>gson</artifactId>
-				<version>2.8.9</version>
+				<version>2.12.1</version>
 			</dependency>
 			<dependency>
 				<groupId>commons-httpclient</groupId>
 				<artifactId>commons-httpclient</artifactId>
-				<version>3.0.1</version>
+				<version>3.1</version>
 			</dependency>
 			<dependency>
 				<groupId>com.google.inject</groupId>
@@ -139,7 +139,7 @@
 			<dependency>
 				<groupId>com.sun.jersey.contribs</groupId>
 				<artifactId>jersey-guice</artifactId>
-				<version>1.9</version>
+				<version>1.19.4</version>
 			</dependency>
 			<dependency>
 				<groupId>com.google.inject.extensions</groupId>
@@ -195,7 +195,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
-				<version>2.2</version>
+				<version>2.6</version>
 				<executions>
 					<execution>
 						<goals>
@@ -206,7 +206,7 @@
 			</plugin>
 			<plugin>
 				<artifactId>maven-install-plugin</artifactId>
-				<version>2.3.1</version>
+				<version>2.5.2</version>
 				<inherited>false</inherited>
 				<executions>
 					<execution>
@@ -229,7 +229,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>2.12.4</version>
+				<version>2.22.2</version>
 				<configuration>
 					<argLine>-Djava.awt.headless=true</argLine>
 				</configuration>
@@ -237,7 +237,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.1</version>
+				<version>3.14.0</version>
 				<configuration>
 					<source>1.6</source>
 					<target>1.6</target>
