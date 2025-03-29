@@ -144,7 +144,7 @@
 			<dependency>
 				<groupId>com.google.inject.extensions</groupId>
 				<artifactId>guice-servlet</artifactId>
-				<version>3.0</version>
+				<version>7.0.0</version>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>
